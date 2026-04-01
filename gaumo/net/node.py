@@ -142,7 +142,7 @@ class Node:
             while self._running:
                 await asyncio.sleep(1)
 
-    async def _handle_inbound(self, ws: WebSocketServerProtocol, path: str):
+    async def _handle_inbound(self, ws: WebSocketServerProtocol):
         """Handle an inbound peer connection."""
         host = ws.remote_address[0]
         port = ws.remote_address[1]
