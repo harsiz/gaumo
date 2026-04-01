@@ -191,7 +191,7 @@ class Node:
 
     async def _sync_loop(self):
         """Periodically check if we need to sync more blocks."""
-        await asyncio.sleep(5)  # initial delay
+        await asyncio.sleep(1)  # short initial delay to let connections establish
         while self._running:
             await self._request_sync()
             await asyncio.sleep(SYNC_INTERVAL)

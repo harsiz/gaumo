@@ -154,7 +154,19 @@ def cmd_mine(args):
     api.start()
 
     print(f"API server: http://0.0.0.0:{args.api_port}")
-    print(f"Starting miner... Press Ctrl+C to stop.")
+
+    # Wait for initial chain sync before mining so we don't start on a stale chain
+    print("Syncing chain from peers...")
+    sync_wait = 12  # seconds to wait for sync
+    last_height = blockchain.height
+    for i in range(sync_wait):
+        time.sleep(1)
+        current_height = blockchain.height
+        if i >= 3 and current_height == last_height and node.get_peer_count() > 0:
+            break  # height stabilised, we're synced
+        last_height = current_height
+        print(f"\r  Height: {current_height} | Peers: {node.get_peer_count()} | {sync_wait - i - 1}s...", end='', flush=True)
+    print(f"\nSynced to height {blockchain.height}. Starting miner...")
 
     miner.start()
 

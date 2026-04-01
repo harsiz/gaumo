@@ -68,6 +68,13 @@ class PeerConnection:
             self.ws = await websockets.connect(uri, open_timeout=5, ping_interval=None)
             self._connected = True
             logger.info(f"Connected to peer {self.info.address}")
+            # Send handshake immediately so peer knows our height
+            # and we can trigger block sync based on height comparison
+            from gaumo.net.protocol import MSG_HANDSHAKE, PROTOCOL_VERSION
+            await self.send(MSG_HANDSHAKE, {
+                'height': self.node.blockchain.height,
+                'version': PROTOCOL_VERSION,
+            })
             await asyncio.gather(
                 self._recv_loop(),
                 self._send_loop(),
