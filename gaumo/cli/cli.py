@@ -22,8 +22,14 @@ def get_blockchain():
 
 def cmd_wallet_new(args):
     from gaumo.wallet import Wallet
+    path = args.output
+    if not path:
+        answer = input("Where do you want to save this wallet? [wallet.json]: ").strip()
+        path = answer if answer else 'wallet.json'
+    if Path(path).exists() and not args.force:
+        print(f"Error: '{path}' already exists. Use --force to overwrite (THIS WILL DELETE YOUR FUNDS).")
+        sys.exit(1)
     w = Wallet.generate()
-    path = args.output or 'wallet.json'
     w.save(path)
     print(f"New wallet created:")
     print(f"  Address : {w.address}")
@@ -256,6 +262,7 @@ def main():
     # wallet new
     p = sub.add_parser('wallet-new', help='Generate a new wallet')
     p.add_argument('--output', help='Output file path (default: wallet.json)')
+    p.add_argument('--force', action='store_true', help='Overwrite existing wallet file')
 
     # wallet info
     p = sub.add_parser('wallet-info', help='Show wallet information')
@@ -279,13 +286,13 @@ def main():
     p = sub.add_parser('mine', help='Start mining')
     p.add_argument('--wallet', help='Wallet file')
     p.add_argument('--api-port', type=int, default=8080, help='API port')
-    p.add_argument('--seeds', help='Seed nodes (host:port,...)')
+    p.add_argument('--seeds', default='vps.justharsiz.lol:8765', help='Seed nodes (host:port,...)')
 
     # node
     p = sub.add_parser('node', help='Run a node (no mining)')
     p.add_argument('--api-port', type=int, default=8080, help='API port')
     p.add_argument('--listen-port', type=int, default=None, help='P2P listen port (optional)')
-    p.add_argument('--seeds', help='Seed nodes (host:port,...)')
+    p.add_argument('--seeds', default='vps.justharsiz.lol:8765', help='Seed nodes (host:port,...)')
 
     # peers
     p = sub.add_parser('peers', help='List connected peers')
