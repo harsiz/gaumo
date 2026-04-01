@@ -186,11 +186,12 @@ class GaumoApp(tk.Tk):
             for b in reversed(blocks[-10:]):
                 block_text += (
                     f"#{b['index']:6d} | {b['block_hash'][:16]}... | "
-                    f"txs={len(b['transactions'])} | diff={b.get('difficulty', '?')}\n"
+                    f"txs={len(b['transactions'])} | target={b.get('target', '?')[:12]}...\n"
                 )
             self.after(0, lambda: self._update_text(self._block_list, block_text))
+            target_str = status.get('target', '?')[:16] + '...'
             self.after(0, lambda: self._chain_info_var.set(
-                f"Height: {status['height']} | Difficulty: {status['difficulty']} | "
+                f"Height: {status['height']} | Target: {target_str} | "
                 f"Mempool: {status['mempool_size']} txs"
             ))
 

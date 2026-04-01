@@ -8,6 +8,10 @@ from typing import List
 from gaumo.crypto.hashing import canonical_json, sha256d
 from gaumo.core.transaction import Transaction
 
+# Initial target: hash must be below this 256-bit value.
+# This is roughly equivalent to 5 leading zero hex digits.
+INITIAL_TARGET = '00000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+
 
 @dataclass
 class Block:
@@ -17,14 +21,14 @@ class Block:
     nonce: int
     transactions: List[Transaction]
     block_hash: str = field(default='')
-    difficulty: int = field(default=4)
+    target: str = field(default=INITIAL_TARGET)
 
     def _hashable_dict(self) -> dict:
         return {
-            'difficulty': self.difficulty,
             'index': self.index,
             'nonce': self.nonce,
             'previous_hash': self.previous_hash,
+            'target': self.target,
             'timestamp': self.timestamp,
             'transactions': [tx.to_dict() for tx in self.transactions],
         }
@@ -45,16 +49,11 @@ class Block:
             timestamp=d['timestamp'],
             nonce=d['nonce'],
             transactions=[Transaction.from_dict(tx) for tx in d['transactions']],
-            difficulty=d.get('difficulty', 4),
+            target=d.get('target', INITIAL_TARGET),
         )
         b.block_hash = d.get('block_hash', b.compute_hash())
         return b
 
     def is_valid_pow(self) -> bool:
-        """Check that the block hash meets the difficulty target."""
-        target = '0' * self.difficulty
-        return self.block_hash.startswith(target)
-
-    def meets_target(self, target: str) -> bool:
-        """Check hash against a full target string."""
-        return self.block_hash < target
+        """Check that the block hash is numerically below the target."""
+        return int(self.block_hash, 16) < int(self.target, 16)

@@ -14,6 +14,7 @@ from gaumo.core.block import Block
 from gaumo.core.blockchain import Blockchain, get_block_reward
 from gaumo.core.transaction import make_coinbase_transaction
 from gaumo.crypto.hashing import canonical_json, sha256d
+from gaumo.core.block import INITIAL_TARGET
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,8 @@ class Miner:
 
         # Gather transactions from mempool
         txs = bc.mempool.get_transactions(max_count=100)
-        difficulty = bc.get_current_difficulty()
+        target = bc.get_next_target()
+        target_int = int(target, 16)
         reward = get_block_reward(bc.height + 1)
         fee_total = self._calc_fees(txs)
 
@@ -105,16 +107,14 @@ class Miner:
             timestamp=int(time.time()),
             nonce=0,
             transactions=all_txs,
-            difficulty=difficulty,
+            target=target,
         )
 
-        target_prefix = '0' * difficulty
         nonce = 0
-        hash_batch = 1000  # report stats every N hashes
         last_check = time.time()
         CHECK_INTERVAL = 5.0  # seconds between block/chain checks
 
-        logger.info(f"Mining block #{template.index} | diff={difficulty} | txs={len(all_txs)}")
+        logger.info(f"Mining block #{template.index} | target={target[:16]}... | txs={len(all_txs)}")
 
         while self._running and not self._stop_event.is_set():
             template.nonce = nonce
@@ -122,7 +122,7 @@ class Miner:
             h = sha256d(canonical_json(template._hashable_dict())).hex()
             self.total_hashes += 1
 
-            if h.startswith(target_prefix):
+            if int(h, 16) < target_int:
                 template.block_hash = h
                 logger.info(f"Block found! #{template.index} hash={h[:20]}... nonce={nonce}")
                 ok, err = bc.add_block(template)
@@ -164,9 +164,11 @@ class Miner:
     def _log_stats(self):
         elapsed = time.time() - self.start_time
         rate = self.total_hashes / elapsed if elapsed > 0 else 0
+        target = self.blockchain.get_next_target()
         logger.info(
             f"[Miner] Hashes: {self.total_hashes:,} | "
             f"Rate: {rate:,.0f} H/s | "
             f"Blocks: {self.blocks_found} | "
-            f"Height: {self.blockchain.height}"
+            f"Height: {self.blockchain.height} | "
+            f"Target: {target[:16]}..."
         )

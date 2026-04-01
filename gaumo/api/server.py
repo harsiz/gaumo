@@ -55,7 +55,7 @@ class GaumoAPIHandler(BaseHTTPRequestHandler):
                 'last_block_hash': blockchain.last_block.block_hash,
                 'peers': node.get_peer_count() if node else 0,
                 'mempool_size': blockchain.mempool.size(),
-                'difficulty': blockchain.get_current_difficulty(),
+                'target': blockchain.get_next_target(),
             })
 
         elif path == '/chain':
