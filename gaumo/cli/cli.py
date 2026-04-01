@@ -242,6 +242,13 @@ def cmd_mempool(args):
         print(f"Error: {e}")
 
 
+def cmd_gui(args):
+    """Launch the Gaumo wallet GUI."""
+    from gaumo.gui import launch_gui
+    node_url = f"http://{args.node}"
+    launch_gui(node_url=node_url, wallet_path=args.wallet)
+
+
 def _parse_seeds(seeds_arg) -> list:
     if not seeds_arg:
         return []
@@ -300,6 +307,10 @@ def main():
     # mempool
     p = sub.add_parser('mempool', help='Show mempool')
 
+    # gui
+    p = sub.add_parser('gui', help='Open the Gaumo wallet GUI')
+    p.add_argument('--wallet', default='wallet.json', help='Wallet file to load')
+
     args = parser.parse_args()
 
     commands = {
@@ -312,6 +323,7 @@ def main():
         'node': cmd_node,
         'peers': cmd_peers,
         'mempool': cmd_mempool,
+        'gui': cmd_gui,
     }
 
     if args.command in commands:

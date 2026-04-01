@@ -1,1 +1,1 @@
-from .app import launch_gui, GaumoApp
+from .app import launch_gui, GaumoWallet
