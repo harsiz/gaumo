@@ -108,6 +108,13 @@ class Node:
     def get_peer_count(self) -> int:
         return len(self._peers)
 
+    def get_best_peer_height(self) -> int:
+        """Return the highest chain height reported by any connected peer."""
+        peers = [p for p in self._peers.values() if p.connected]
+        if not peers:
+            return 0
+        return max(p.info.height for p in peers)
+
     def get_peer_list(self) -> List[dict]:
         return [p.info.to_dict() for p in self._peers.values()]
 

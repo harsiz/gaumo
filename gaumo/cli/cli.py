@@ -155,34 +155,8 @@ def cmd_mine(args):
 
     print(f"API server: http://0.0.0.0:{args.api_port}")
 
-    # Wait for initial chain sync before mining.
-    # Keep waiting as long as height is still increasing (actively syncing).
-    # Give up after 120s max in case we're offline / no peers.
-    print("Syncing chain from peers...")
-    MAX_SYNC_WAIT = 120
-    STABLE_SECONDS = 4   # height must be unchanged for this many seconds to be "done"
-    last_height = -1
-    stable_count = 0
-    for i in range(MAX_SYNC_WAIT):
-        time.sleep(1)
-        current_height = blockchain.height
-        peers = node.get_peer_count()
-        print(f"\r  Height: {current_height} | Peers: {peers} | Elapsed: {i+1}s  ", end='', flush=True)
-
-        if peers == 0 and i >= 5:
-            # No peers after 5s — just start on local chain
-            break
-
-        if current_height == last_height:
-            stable_count += 1
-            if stable_count >= STABLE_SECONDS and peers > 0:
-                break  # height hasn't moved for STABLE_SECONDS — we're synced
-        else:
-            stable_count = 0  # still receiving blocks, reset counter
-
-        last_height = current_height
-
-    print(f"\nSynced to height {blockchain.height}. Starting miner...")
+    _wait_for_sync(blockchain, node)
+    print(f"Starting miner...")
 
     miner.start()
 
@@ -226,28 +200,7 @@ def cmd_node(args):
     api.start()
 
     print(f"Node started. API: http://0.0.0.0:{args.api_port}")
-
-    # Sync chain from peers before serving
-    print("Syncing chain from peers...")
-    MAX_SYNC_WAIT = 120
-    STABLE_SECONDS = 4
-    last_height = -1
-    stable_count = 0
-    for i in range(MAX_SYNC_WAIT):
-        time.sleep(1)
-        current_height = blockchain.height
-        peers = node.get_peer_count()
-        print(f"\r  Height: {current_height} | Peers: {peers} | Elapsed: {i+1}s  ", end='', flush=True)
-        if peers == 0 and i >= 5:
-            break
-        if current_height == last_height:
-            stable_count += 1
-            if stable_count >= STABLE_SECONDS and peers > 0:
-                break
-        else:
-            stable_count = 0
-        last_height = current_height
-    print(f"\nSynced to height {blockchain.height}.")
+    _wait_for_sync(blockchain, node)
     print("Press Ctrl+C to stop.")
 
     def _stop(sig, frame):
@@ -311,6 +264,58 @@ def cmd_open(args):
     else:
         subprocess.Popen(['xdg-open', str(path)])
     print(f"Opened: {path}")
+
+
+def _wait_for_sync(blockchain, node):
+    """
+    Wait for the chain to sync from peers before starting.
+
+    Logic:
+    - Wait up to 8s for any peer to connect.
+    - If no peers found: start with local chain immediately.
+    - If peers found: check their best height.
+      - If our height >= best peer height: already synced, done.
+      - Otherwise: wait until we catch up (height stops rising), max 120s.
+    """
+    print("Checking for peers...")
+    for i in range(8):
+        time.sleep(1)
+        if node.get_peer_count() > 0:
+            break
+        print(f"\r  Waiting for peers... {i+1}s  ", end='', flush=True)
+
+    if node.get_peer_count() == 0:
+        print(f"\nNo peers found. Starting with local chain at height {blockchain.height}.")
+        return
+
+    best = node.get_best_peer_height()
+    if best <= blockchain.height:
+        print(f"\n  Already at height {blockchain.height} (peers at {best}). No sync needed.")
+        return
+
+    print(f"\n  Syncing: our height {blockchain.height} → peer best {best}")
+    last_height = -1
+    stable_count = 0
+    for i in range(120):
+        time.sleep(1)
+        current_height = blockchain.height
+        best = node.get_best_peer_height()
+        print(f"\r  Height: {current_height}/{best} | Peers: {node.get_peer_count()} | {i+1}s  ", end='', flush=True)
+
+        if current_height >= best and best > 0:
+            print(f"\n  Synced to height {current_height}.")
+            return
+
+        if current_height == last_height:
+            stable_count += 1
+            if stable_count >= 6:
+                # Height stopped moving — as far as we can get
+                break
+        else:
+            stable_count = 0
+        last_height = current_height
+
+    print(f"\nSync complete. Height: {blockchain.height}.")
 
 
 def _parse_seeds(seeds_arg) -> list:
