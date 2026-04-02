@@ -226,6 +226,28 @@ def cmd_node(args):
     api.start()
 
     print(f"Node started. API: http://0.0.0.0:{args.api_port}")
+
+    # Sync chain from peers before serving
+    print("Syncing chain from peers...")
+    MAX_SYNC_WAIT = 120
+    STABLE_SECONDS = 4
+    last_height = -1
+    stable_count = 0
+    for i in range(MAX_SYNC_WAIT):
+        time.sleep(1)
+        current_height = blockchain.height
+        peers = node.get_peer_count()
+        print(f"\r  Height: {current_height} | Peers: {peers} | Elapsed: {i+1}s  ", end='', flush=True)
+        if peers == 0 and i >= 5:
+            break
+        if current_height == last_height:
+            stable_count += 1
+            if stable_count >= STABLE_SECONDS and peers > 0:
+                break
+        else:
+            stable_count = 0
+        last_height = current_height
+    print(f"\nSynced to height {blockchain.height}.")
     print("Press Ctrl+C to stop.")
 
     def _stop(sig, frame):
