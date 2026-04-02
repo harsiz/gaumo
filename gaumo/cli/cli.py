@@ -299,6 +299,20 @@ def cmd_gui(args):
     launch_gui(node_url=node_url, wallet_path=args.wallet)
 
 
+def cmd_open(args):
+    """Open the Gaumo directory in file explorer."""
+    import subprocess
+    import gaumo
+    path = Path(gaumo.__file__).parent.parent
+    if sys.platform == 'win32':
+        subprocess.Popen(['explorer', str(path)])
+    elif sys.platform == 'darwin':
+        subprocess.Popen(['open', str(path)])
+    else:
+        subprocess.Popen(['xdg-open', str(path)])
+    print(f"Opened: {path}")
+
+
 def _parse_seeds(seeds_arg) -> list:
     if not seeds_arg:
         return []
@@ -361,6 +375,9 @@ def main():
     p = sub.add_parser('gui', help='Open the Gaumo wallet GUI')
     p.add_argument('--wallet', default='wallet.json', help='Wallet file to load')
 
+    # open file explorer
+    sub.add_parser('.', help='Open Gaumo folder in file explorer')
+
     args = parser.parse_args()
 
     commands = {
@@ -374,6 +391,7 @@ def main():
         'peers': cmd_peers,
         'mempool': cmd_mempool,
         'gui': cmd_gui,
+        '.': cmd_open,
     }
 
     if args.command in commands:
