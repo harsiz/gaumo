@@ -155,17 +155,33 @@ def cmd_mine(args):
 
     print(f"API server: http://0.0.0.0:{args.api_port}")
 
-    # Wait for initial chain sync before mining so we don't start on a stale chain
+    # Wait for initial chain sync before mining.
+    # Keep waiting as long as height is still increasing (actively syncing).
+    # Give up after 120s max in case we're offline / no peers.
     print("Syncing chain from peers...")
-    sync_wait = 12  # seconds to wait for sync
-    last_height = blockchain.height
-    for i in range(sync_wait):
+    MAX_SYNC_WAIT = 120
+    STABLE_SECONDS = 4   # height must be unchanged for this many seconds to be "done"
+    last_height = -1
+    stable_count = 0
+    for i in range(MAX_SYNC_WAIT):
         time.sleep(1)
         current_height = blockchain.height
-        if i >= 3 and current_height == last_height and node.get_peer_count() > 0:
-            break  # height stabilised, we're synced
+        peers = node.get_peer_count()
+        print(f"\r  Height: {current_height} | Peers: {peers} | Elapsed: {i+1}s  ", end='', flush=True)
+
+        if peers == 0 and i >= 5:
+            # No peers after 5s — just start on local chain
+            break
+
+        if current_height == last_height:
+            stable_count += 1
+            if stable_count >= STABLE_SECONDS and peers > 0:
+                break  # height hasn't moved for STABLE_SECONDS — we're synced
+        else:
+            stable_count = 0  # still receiving blocks, reset counter
+
         last_height = current_height
-        print(f"\r  Height: {current_height} | Peers: {node.get_peer_count()} | {sync_wait - i - 1}s...", end='', flush=True)
+
     print(f"\nSynced to height {blockchain.height}. Starting miner...")
 
     miner.start()

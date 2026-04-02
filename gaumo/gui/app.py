@@ -15,7 +15,7 @@ import urllib.error
 from pathlib import Path
 
 NODE_URL = 'http://localhost:8080'
-REFRESH_INTERVAL = 10000  # ms
+REFRESH_INTERVAL = 3000  # ms
 
 
 def api_get(path, timeout=5):
